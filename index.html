@@ -1,182 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CHESS ÉLITE</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Georgia', serif;
-      background-color: #2e1b0f;
-      color: gold;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .container {
-      text-align: center;
-      background: #3a2416;
-      padding: 20px;
-      border-radius: 20px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.6);
-    }
-    h1 {
-      font-size: 48px;
-      margin-bottom: 20px;
-    }
-    .menu button, #botLevel {
-      background-color: transparent;
-      border: 2px solid gold;
-      color: gold;
-      padding: 10px 20px;
-      margin: 10px;
-      font-size: 18px;
-      border-radius: 10px;
-      cursor: pointer;
-    }
-    .menu button:hover, #botLevel:hover {
-      background-color: gold;
-      color: #2e1b0f;
-    }
-    canvas {
-      margin-top: 20px;
-      border: 4px solid gold;
-      background-color: #5a3c2b;
-      box-shadow: inset 0 0 10px rgba(255,255,255,0.2);
-    }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="container">
-    <h1>CHESS ÉLITE</h1>
-    <div class="menu">
-      <button onclick="startMultiplayer()">MULTIPLAYER</button>
-      <button onclick="startVsBot()">PLAY VS BOT</button>
-      <select id="botLevel">
-        <option value="1">Beginner</option>
-        <option value="2">Smart</option>
-        <option value="3">Luxury Grandmaster</option>
-      </select>
+  <div id="startMenu" class="overlay">
+    <div class="menu-panel">
+      <h1>CHESS ÉLITE</h1>
+      <button onclick="startGame('bot')">Play vs Bot</button>
+      <button onclick="startGame('multiplayer')">Multiplayer</button>
+    </div>
+  </div>
+
+  <div id="pauseMenu" class="overlay hidden">
+    <div class="menu-panel">
+      <h2>Paused</h2>
+      <button onclick="resumeGame()">Continue</button>
+      <button onclick="location.reload()">Exit</button>
+    </div>
+  </div>
+
+  <div id="gameUI" class="hidden">
+    <div class="top-bar">
+      <span id="statusText">Your turn</span>
+      <button onclick="pauseGame()">Pause</button>
     </div>
     <canvas id="chessboard" width="480" height="480"></canvas>
   </div>
-  <script>
-    const canvas = document.getElementById("chessboard");
-    const ctx = canvas.getContext("2d");
-    const tileSize = 60;
 
-    let board = [];
-    let currentPlayer = 'white';
-    let selected = null;
-
-    const figures = {
-      r: { w: '♖', b: '♜' },
-      n: { w: '♘', b: '♞' },
-      b: { w: '♗', b: '♝' },
-      q: { w: '♕', b: '♛' },
-      k: { w: '♔', b: '♚' },
-      p: { w: '♙', b: '♟' }
-    };
-
-    const initBoard = () => [
-      ["b_r", "b_n", "b_b", "b_q", "b_k", "b_b", "b_n", "b_r"],
-      ["b_p", "b_p", "b_p", "b_p", "b_p", "b_p", "b_p", "b_p"],
-      ["", "", "", "", "", "", "", ""],
-      ["", "", "", "", "", "", "", ""],
-      ["", "", "", "", "", "", "", ""],
-      ["", "", "", "", "", "", "", ""],
-      ["w_p", "w_p", "w_p", "w_p", "w_p", "w_p", "w_p", "w_p"],
-      ["w_r", "w_n", "w_b", "w_q", "w_k", "w_b", "w_n", "w_r"]
-    ];
-
-    function drawBoard() {
-      ctx.clearRect(0, 0, 480, 480);
-      for (let row = 0; row < 8; row++) {
-        for (let col = 0; col < 8; col++) {
-          ctx.fillStyle = (row + col) % 2 === 0 ? "#d2b48c" : "#3a2416";
-          ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
-          let piece = board[row][col];
-          if (piece) {
-            const [color, type] = piece.split('_');
-            ctx.fillStyle = "gold";
-            ctx.font = "36px Georgia";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(figures[type][color[0]], col * tileSize + tileSize/2, row * tileSize + tileSize/2);
-          }
-        }
-      }
-    }
-
-    function getMousePos(evt) {
-      const rect = canvas.getBoundingClientRect();
-      return {
-        x: Math.floor((evt.clientX - rect.left) / tileSize),
-        y: Math.floor((evt.clientY - rect.top) / tileSize)
-      };
-    }
-
-    canvas.addEventListener('click', e => {
-      const { x, y } = getMousePos(e);
-      const clicked = board[y][x];
-      if (selected) {
-        const [sx, sy] = selected;
-        if (sx !== y || sy !== x) {
-          if (isValidMove(sx, sy, y, x)) {
-            board[y][x] = board[sx][sy];
-            board[sx][sy] = "";
-            currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
-          }
-        }
-        selected = null;
-      } else if (clicked && clicked.startsWith(currentPlayer[0])) {
-        selected = [y, x];
-      }
-      drawBoard();
-    });
-
-    function isValidMove(sy, sx, dy, dx) {
-      const piece = board[sy][sx];
-      if (!piece) return false;
-      const [color, type] = piece.split('_');
-      const target = board[dy][dx];
-      if (target && target.startsWith(color[0])) return false;
-      const dyAbs = Math.abs(dy - sy);
-      const dxAbs = Math.abs(dx - sx);
-      switch (type) {
-        case 'p':
-          const dir = color === 'w' ? -1 : 1;
-          if (dx === sx && !target && dy - sy === dir) return true;
-          if (dxAbs === 1 && dy - sy === dir && target) return true;
-          return false;
-        case 'r': return (dx === sx || dy === sy);
-        case 'n': return dxAbs * dxAbs + dyAbs * dyAbs === 5;
-        case 'b': return dxAbs === dyAbs;
-        case 'q': return dx === sx || dy === sy || dxAbs === dyAbs;
-        case 'k': return dxAbs <= 1 && dyAbs <= 1;
-      }
-      return false;
-    }
-
-    function startMultiplayer() {
-      alert("Multiplayer coming in full version.");
-    }
-
-    function startVsBot() {
-      const level = parseInt(document.getElementById("botLevel").value);
-      board = initBoard();
-      currentPlayer = 'white';
-      drawBoard();
-      // Simple bot logic stub
-      if (level === 1) {
-        setTimeout(() => alert("Bot move (placeholder)"), 1000);
-      }
-    }
-
-    board = initBoard();
-    drawBoard();
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
